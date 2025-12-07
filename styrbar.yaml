@@ -11,7 +11,6 @@ blueprint:
     Requires Zigbee2MQTT action sensor and an input_text helper
     to store the last-target light entity_id.
   domain: automation
-  source_url: ""
 
   input:
     remote_action:
