@@ -1,19 +1,20 @@
 blueprint:
-  name: IKEA STYRBAR (Zigbee2MQTT) – last-target brightness (areas/groups)
+  name: Styrbar remote
   description: >
-    Use an IKEA STYRBAR remote via Zigbee2MQTT.
+    IKEA STYRBAR over Zigbee2MQTT.
 
-    - "on" toggles Light A target and marks it as last target
-    - "off" toggles Light B target and marks it as last target
-    - "arrow_left_click" dims either:
+    - "on"  toggles the ON target and marks it as last target
+    - "off" toggles the OFF target and marks it as last target
+    - "arrow_left_click"  dims either:
         * the last-pressed target (ON/OFF), or
         * always the ON target (depending on mode)
     - "arrow_right_click" brightens similarly
 
-    Light targets can be single entities, groups, devices or areas.
-    Requires Zigbee2MQTT action sensor and an input_text helper
+    ON/OFF targets can be single entities, groups, devices or areas.
+    Requires the Zigbee2MQTT action sensor and an input_text helper
     to store "on" / "off" as the last target.
   domain: automation
+  source_url: https://raw.githubusercontent.com/Daiki0613/HomeAssistant/main/styrbar.yaml
 
   input:
     remote_action:
@@ -24,18 +25,16 @@ blueprint:
           domain: sensor
 
     light_on_target:
-      name: Target for ON button (Light A)
-      description: >
-        Target to toggle when ON is pressed (entity, group, device or area).
+      name: Target for ON button
+      description: Target to toggle when ON is pressed (entity, group, device or area).
       selector:
         target:
           entity:
             domain: light
 
     light_off_target:
-      name: Target for OFF button (Light B)
-      description: >
-        Target to toggle when OFF is pressed (entity, group, device or area).
+      name: Target for OFF button
+      description: Target to toggle when OFF is pressed (entity, group, device or area).
       selector:
         target:
           entity:
@@ -54,7 +53,7 @@ blueprint:
       name: Brightness mode
       description: >
         - last_pressed: arrows control whichever (ON/OFF) was pressed last
-        - on_only: arrows always control the ON target
+        - on_only:     arrows always control the ON target
       default: last_pressed
       selector:
         select:
@@ -121,20 +120,27 @@ action:
           - condition: template
             value_template: "{{ action == 'arrow_left_click' }}"
         sequence:
+          - variables:
+              target_flag: >-
+                {% if brightness_mode == 'last_pressed' %}
+                  {% if states(last_helper) in ['on', 'off'] %}
+                    {{ states(last_helper) }}
+                  {% else %}
+                    on
+                  {% endif %}
+                {% else %}
+                  on
+                {% endif %}
           - choose:
-              # If mode is last_pressed and last was OFF → dim OFF target
               - conditions:
                   - condition: template
-                    value_template: >
-                      {{ brightness_mode == 'last_pressed'
-                         and states(last_helper) == 'off' }}
+                    value_template: "{{ target_flag == 'off' }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
             default:
-              # Otherwise (ON-only mode, or last not OFF) → dim ON target
               - service: light.turn_on
                 target: !input light_on_target
                 data:
@@ -145,23 +151,29 @@ action:
           - condition: template
             value_template: "{{ action == 'arrow_right_click' }}"
         sequence:
+          - variables:
+              target_flag: >-
+                {% if brightness_mode == 'last_pressed' %}
+                  {% if states(last_helper) in ['on', 'off'] %}
+                    {{ states(last_helper) }}
+                  {% else %}
+                    on
+                  {% endif %}
+                {% else %}
+                  on
+                {% endif %}
           - choose:
-              # If mode is last_pressed and last was OFF → brighten OFF target
               - conditions:
                   - condition: template
-                    value_template: >
-                      {{ brightness_mode == 'last_pressed'
-                         and states(last_helper) == 'off' }}
+                    value_template: "{{ target_flag == 'off' }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ brightness_step | int }}"
             default:
-              # Otherwise (ON-only mode, or last not OFF) → brighten ON target
               - service: light.turn_on
                 target: !input light_on_target
                 data:
                   brightness_step_pct: "{{ brightness_step | int }}"
-
-  - default: []
+    default: []
