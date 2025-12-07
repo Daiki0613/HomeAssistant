@@ -11,8 +11,8 @@ blueprint:
     - "arrow_right_click" brightens similarly
 
     ON/OFF targets can be single entities, groups, devices or areas.
-    Requires the Zigbee2MQTT action sensor and an input_text helper
-    to store "on" / "off" as the last target.
+    The last-target helper is optional. If it is empty, no state is stored
+    and brightness behaves as ON-only.
   domain: automation
   source_url: https://raw.githubusercontent.com/Daiki0613/HomeAssistant/main/styrbar.yaml
 
@@ -26,7 +26,9 @@ blueprint:
 
     light_on_target:
       name: Target for ON button
-      description: Target to toggle when ON is pressed (entity, group, device or area).
+      description: >
+        Target to toggle when ON is pressed (entity, group, device or area).
+        If left empty, ON will do nothing.
       selector:
         target:
           entity:
@@ -34,25 +36,28 @@ blueprint:
 
     light_off_target:
       name: Target for OFF button
-      description: Target to toggle when OFF is pressed (entity, group, device or area).
+      description: >
+        Target to toggle when OFF is pressed (entity, group, device or area).
+        If left empty, OFF will do nothing.
       selector:
         target:
           entity:
             domain: light
 
     last_target_helper:
-      name: Last target text helper
+      name: Last target helper (optional)
       description: >
-        input_text entity used to remember which target was last used.
-        This will store "on" or "off".
+        Entity ID of an input_text used to remember which target was last used.
+        Store "on" or "off". Leave empty to disable last_pressed tracking.
+      default: ""
       selector:
-        entity:
-          domain: input_text
+        text:
 
     brightness_mode:
       name: Brightness mode
       description: >
         - last_pressed: arrows control whichever (ON/OFF) was pressed last
+                        (requires helper; if helper is empty, falls back to ON-only)
         - on_only:     arrows always control the ON target
       default: last_pressed
       selector:
@@ -78,47 +83,75 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Listen specifically to the Zigbee2MQTT "action" attribute
   - platform: state
     entity_id: !input remote_action
-    attribute: action
-    # Only fire when action is not empty
-    not_to: ""
 
 variables:
-  # This will now be the actual Z2M action, e.g. "on", "off", "arrow_left_click"
   action: "{{ trigger.to_state.state }}"
-  last_helper: !input last_target_helper
   brightness_mode: !input brightness_mode
   brightness_step: !input brightness_step
 
+  # Raw targets (can be empty {} if user didn't set them)
+  on_target: !input light_on_target
+  off_target: !input light_off_target
+
+  # Helper is an optional string (entity_id or empty)
+  last_helper: !input last_target_helper
+
+  # Convenience booleans
+  has_on_target: "{{ on_target | length > 0 }}"
+  has_off_target: "{{ off_target | length > 0 }}"
+  has_helper: "{{ last_helper | length > 0 }}"
+
 action:
   - choose:
-      # ─── ON button: toggle ON target and mark "on" ───
+      # ─── ON button: toggle ON target and optionally mark "on" ───
       - conditions:
           - condition: template
             value_template: "{{ action == 'on' }}"
         sequence:
-          - service: light.toggle
-            target: !input light_on_target
-          - service: input_text.set_value
-            target:
-              entity_id: !input last_target_helper
-            data:
-              value: "on"
+          # If ON target is configured, toggle it
+          - if:
+              - condition: template
+                value_template: "{{ has_on_target }}"
+            then:
+              - service: light.toggle
+                target: !input light_on_target
 
-      # ─── OFF button: toggle OFF target and mark "off" ───
+          # If helper is configured, store "on"
+          - if:
+              - condition: template
+                value_template: "{{ has_helper }}"
+            then:
+              - service: input_text.set_value
+                target:
+                  entity_id: "{{ last_helper }}"
+                data:
+                  value: "on"
+
+      # ─── OFF button: toggle OFF target and optionally mark "off" ───
       - conditions:
           - condition: template
             value_template: "{{ action == 'off' }}"
         sequence:
-          - service: light.toggle
-            target: !input light_off_target
-          - service: input_text.set_value
-            target:
-              entity_id: !input last_target_helper
-            data:
-              value: "off"
+          # If OFF target is configured, toggle it
+          - if:
+              - condition: template
+                value_template: "{{ has_off_target }}"
+            then:
+              - service: light.toggle
+                target: !input light_off_target
+
+          # If helper is configured, store "off"
+          - if:
+              - condition: template
+                value_template: "{{ has_helper }}"
+            then:
+              - service: input_text.set_value
+                target:
+                  entity_id: "{{ last_helper }}"
+                data:
+                  value: "off"
 
       # ─── LEFT arrow: dim last-target (or ON-only) ───
       - conditions:
@@ -126,10 +159,13 @@ action:
             value_template: "{{ action == 'arrow_left_click' }}"
         sequence:
           - variables:
+              use_last_pressed: >-
+                {{ brightness_mode == 'last_pressed' and has_helper }}
               target_flag: >-
-                {% if brightness_mode == 'last_pressed' %}
-                  {% if states(last_helper) in ['on', 'off'] %}
-                    {{ states(last_helper) }}
+                {% if use_last_pressed %}
+                  {% set val = states(last_helper) %}
+                  {% if val in ['on', 'off'] %}
+                    {{ val }}
                   {% else %}
                     on
                   {% endif %}
@@ -137,15 +173,23 @@ action:
                   on
                 {% endif %}
           - choose:
+              # Use OFF target only if:
+              # - last_pressed mode with helper, and last value was "off"
+              # - AND an OFF target is actually configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
+                  - condition: template
+                    value_template: "{{ has_off_target }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
             default:
+              # Otherwise, use ON target if configured
+              - condition: template
+                value_template: "{{ has_on_target }}"
               - service: light.turn_on
                 target: !input light_on_target
                 data:
@@ -157,10 +201,13 @@ action:
             value_template: "{{ action == 'arrow_right_click' }}"
         sequence:
           - variables:
+              use_last_pressed: >-
+                {{ brightness_mode == 'last_pressed' and has_helper }}
               target_flag: >-
-                {% if brightness_mode == 'last_pressed' %}
-                  {% if states(last_helper) in ['on', 'off'] %}
-                    {{ states(last_helper) }}
+                {% if use_last_pressed %}
+                  {% set val = states(last_helper) %}
+                  {% if val in ['on', 'off'] %}
+                    {{ val }}
                   {% else %}
                     on
                   {% endif %}
@@ -168,15 +215,23 @@ action:
                   on
                 {% endif %}
           - choose:
+              # Use OFF target only if:
+              # - last_pressed mode with helper, and last value was "off"
+              # - AND an OFF target is actually configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
+                  - condition: template
+                    value_template: "{{ has_off_target }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ brightness_step | int }}"
             default:
+              # Otherwise, use ON target if configured
+              - condition: template
+                value_template: "{{ has_on_target }}"
               - service: light.turn_on
                 target: !input light_on_target
                 data:
