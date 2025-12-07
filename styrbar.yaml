@@ -29,6 +29,7 @@ blueprint:
       description: >
         Target to toggle when ON is pressed (entity, group, device or area).
         If left empty, ON will do nothing.
+      default: {}             # <-- makes it optional
       selector:
         target:
           entity:
@@ -39,6 +40,7 @@ blueprint:
       description: >
         Target to toggle when OFF is pressed (entity, group, device or area).
         If left empty, OFF will do nothing.
+      default: {}             # <-- makes it optional
       selector:
         target:
           entity:
@@ -91,7 +93,7 @@ variables:
   brightness_mode: !input brightness_mode
   brightness_step: !input brightness_step
 
-  # Raw targets (can be empty {} if user didn't set them)
+  # Raw targets (can be {} if user didn't set them)
   on_target: !input light_on_target
   off_target: !input light_off_target
 
@@ -173,9 +175,7 @@ action:
                   on
                 {% endif %}
           - choose:
-              # Use OFF target only if:
-              # - last_pressed mode with helper, and last value was "off"
-              # - AND an OFF target is actually configured
+              # Use OFF target only if last_pressed+helper+OFF configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
@@ -215,9 +215,7 @@ action:
                   on
                 {% endif %}
           - choose:
-              # Use OFF target only if:
-              # - last_pressed mode with helper, and last value was "off"
-              # - AND an OFF target is actually configured
+              # Use OFF target only if last_pressed+helper+OFF configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
