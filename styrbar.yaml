@@ -1,0 +1,165 @@
+blueprint:
+  name: IKEA STYRBAR (Zigbee2MQTT)
+  description: >
+    Use an IKEA STYRBAR remote via Zigbee2MQTT.
+
+    - "on" toggles Light A and sets it as last target
+    - "off" toggles Light B and sets it as last target
+    - "arrow_left_click" dims the last target (or a fixed light)
+    - "arrow_right_click" brightens the last target (or a fixed light)
+
+    Requires Zigbee2MQTT action sensor and an input_text helper
+    to store the last-target light entity_id.
+  domain: automation
+  source_url: ""
+
+  input:
+    remote_action:
+      name: STYRBAR action sensor
+      description: The Zigbee2MQTT action sensor (e.g. sensor.styrbar_action)
+      selector:
+        entity:
+          domain: sensor
+
+    light_on:
+      name: Light for ON button (Light A)
+      description: Light to toggle when ON is pressed
+      selector:
+        entity:
+          domain: light
+
+    light_off:
+      name: Light for OFF button (Light B)
+      description: Light to toggle when OFF is pressed
+      selector:
+        entity:
+          domain: light
+
+    last_target_helper:
+      name: Last target text helper
+      description: >
+        input_text entity used to remember the last-target light entity_id.
+        Create a text helper first and select it here.
+      selector:
+        entity:
+          domain: input_text
+
+    brightness_mode:
+      name: Brightness target mode
+      description: >
+        Decide what the arrow buttons control:
+        - last_pressed: use whichever light's ON/OFF was pressed last
+        - fixed: always use the fixed brightness light below
+      default: last_pressed
+      selector:
+        select:
+          options:
+            - last_pressed
+            - fixed
+
+    brightness_fixed_light:
+      name: Fixed brightness light (optional)
+      description: >
+        Light to use when brightness mode is "fixed".
+        If not set, Light A (ON light) will be used.
+      default:
+      selector:
+        entity:
+          domain: light
+          multiple: false
+          include_entities: []
+
+    brightness_step:
+      name: Brightness step (%)
+      description: >
+        How much to change brightness per arrow click.
+        Left arrow = -step, Right arrow = +step.
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+          unit_of_measurement: "%"
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input remote_action
+
+variables:
+  action: "{{ trigger.to_state.state }}"
+  light_on: !input light_on
+  light_off: !input light_off
+  last_helper: !input last_target_helper
+  brightness_mode: !input brightness_mode
+  brightness_fixed_light: !input brightness_fixed_light
+  brightness_step: !input brightness_step
+
+action:
+  - choose:
+      # ─── ON button: toggle Light A and remember it ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'on' }}"
+        sequence:
+          - service: light.toggle
+            target:
+              entity_id: "{{ light_on }}"
+          - service: input_text.set_value
+            target:
+              entity_id: "{{ last_helper }}"
+            data:
+              value: "{{ light_on }}"
+
+      # ─── OFF button: toggle Light B and remember it ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'off' }}"
+        sequence:
+          - service: light.toggle
+            target:
+              entity_id: "{{ light_off }}"
+          - service: input_text.set_value
+            target:
+              entity_id: "{{ last_helper }}"
+            data:
+              value: "{{ light_off }}"
+
+      # ─── LEFT arrow: dim last-target (or fixed) light ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'arrow_left_click' }}"
+        sequence:
+          - variables:
+              target_light: >-
+                {%- if brightness_mode == 'fixed' -%}
+                  {{ brightness_fixed_light or light_on }}
+                {%- else -%}
+                  {{ states(last_helper) if states(last_helper) not in ['unknown','unavailable',''] else light_on }}
+                {%- endif -%}
+          - service: light.turn_on
+            data:
+              entity_id: "{{ target_light }}"
+              brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
+
+      # ─── RIGHT arrow: brighten last-target (or fixed) light ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'arrow_right_click' }}"
+        sequence:
+          - variables:
+              target_light: >-
+                {%- if brightness_mode == 'fixed' -%}
+                  {{ brightness_fixed_light or light_on }}
+                {%- else -%}
+                  {{ states(last_helper) if states(last_helper) not in ['unknown','unavailable',''] else light_on }}
+                {%- endif -%}
+          - service: light.turn_on
+            data:
+              entity_id: "{{ target_light }}"
+              brightness_step_pct: "{{ brightness_step | int }}"
+
+  - default: []
