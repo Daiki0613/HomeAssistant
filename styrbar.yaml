@@ -78,10 +78,15 @@ mode: restart
 max_exceeded: silent
 
 trigger:
+  # Listen specifically to the Zigbee2MQTT "action" attribute
   - platform: state
     entity_id: !input remote_action
+    attribute: action
+    # Only fire when action is not empty
+    not_to: ""
 
 variables:
+  # This will now be the actual Z2M action, e.g. "on", "off", "arrow_left_click"
   action: "{{ trigger.to_state.state }}"
   last_helper: !input last_target_helper
   brightness_mode: !input brightness_mode
