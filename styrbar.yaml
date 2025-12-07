@@ -12,7 +12,7 @@ blueprint:
 
     ON/OFF targets can be single entities, groups, devices or areas.
     The last-target helper is optional. If it is empty, no state is stored
-    and brightness behaves as ON-only.
+    and brightness effectively behaves as ON-only.
   domain: automation
   source_url: https://raw.githubusercontent.com/Daiki0613/HomeAssistant/main/styrbar.yaml
 
@@ -28,8 +28,6 @@ blueprint:
       name: Target for ON button
       description: >
         Target to toggle when ON is pressed (entity, group, device or area).
-        If left empty, ON will do nothing.
-      default: {}             # <-- makes it optional
       selector:
         target:
           entity:
@@ -39,8 +37,6 @@ blueprint:
       name: Target for OFF button
       description: >
         Target to toggle when OFF is pressed (entity, group, device or area).
-        If left empty, OFF will do nothing.
-      default: {}             # <-- makes it optional
       selector:
         target:
           entity:
@@ -93,16 +89,7 @@ variables:
   brightness_mode: !input brightness_mode
   brightness_step: !input brightness_step
 
-  # Raw targets (can be {} if user didn't set them)
-  on_target: !input light_on_target
-  off_target: !input light_off_target
-
-  # Helper is an optional string (entity_id or empty)
   last_helper: !input last_target_helper
-
-  # Convenience booleans
-  has_on_target: "{{ on_target | length > 0 }}"
-  has_off_target: "{{ off_target | length > 0 }}"
   has_helper: "{{ last_helper | length > 0 }}"
 
 action:
@@ -112,15 +99,9 @@ action:
           - condition: template
             value_template: "{{ action == 'on' }}"
         sequence:
-          # If ON target is configured, toggle it
-          - if:
-              - condition: template
-                value_template: "{{ has_on_target }}"
-            then:
-              - service: light.toggle
-                target: !input light_on_target
+          - service: light.toggle
+            target: !input light_on_target
 
-          # If helper is configured, store "on"
           - if:
               - condition: template
                 value_template: "{{ has_helper }}"
@@ -136,15 +117,9 @@ action:
           - condition: template
             value_template: "{{ action == 'off' }}"
         sequence:
-          # If OFF target is configured, toggle it
-          - if:
-              - condition: template
-                value_template: "{{ has_off_target }}"
-            then:
-              - service: light.toggle
-                target: !input light_off_target
+          - service: light.toggle
+            target: !input light_off_target
 
-          # If helper is configured, store "off"
           - if:
               - condition: template
                 value_template: "{{ has_helper }}"
@@ -175,21 +150,15 @@ action:
                   on
                 {% endif %}
           - choose:
-              # Use OFF target only if last_pressed+helper+OFF configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
-                  - condition: template
-                    value_template: "{{ has_off_target }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
             default:
-              # Otherwise, use ON target if configured
-              - condition: template
-                value_template: "{{ has_on_target }}"
               - service: light.turn_on
                 target: !input light_on_target
                 data:
@@ -215,21 +184,15 @@ action:
                   on
                 {% endif %}
           - choose:
-              # Use OFF target only if last_pressed+helper+OFF configured
               - conditions:
                   - condition: template
                     value_template: "{{ target_flag == 'off' }}"
-                  - condition: template
-                    value_template: "{{ has_off_target }}"
                 sequence:
                   - service: light.turn_on
                     target: !input light_off_target
                     data:
                       brightness_step_pct: "{{ brightness_step | int }}"
             default:
-              # Otherwise, use ON target if configured
-              - condition: template
-                value_template: "{{ has_on_target }}"
               - service: light.turn_on
                 target: !input light_on_target
                 data:
