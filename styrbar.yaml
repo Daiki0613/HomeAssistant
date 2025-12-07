@@ -98,7 +98,7 @@ action:
             target: !input light_on_target
           - service: input_text.set_value
             target:
-              entity_id: "{{ last_helper }}"
+              entity_id: !input last_target_helper
             data:
               value: "on"
 
@@ -111,7 +111,7 @@ action:
             target: !input light_off_target
           - service: input_text.set_value
             target:
-              entity_id: "{{ last_helper }}"
+              entity_id: !input last_target_helper
             data:
               value: "off"
 
