@@ -1,0 +1,23 @@
+automation:
+  - id: boiler_boost_webhook
+    alias: Boiler boost (webhook, duration arg)
+    mode: restart
+    trigger:
+      - platform: webhook
+        webhook_id: boiler_boost_2f9c1b6e7f
+
+    variables:
+      # Read ?minutes=123 from the URL, fallback to 120 if missing/invalid
+      minutes_requested: "{{ trigger.query.minutes | default(120) | int(120) }}"
+      # Clamp to something sane (e.g., 1..240)
+      minutes: "{{ [1, [minutes_requested, 240] | min] | max }}"
+
+    action:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.boiler
+      - delay:
+          minutes: "{{ minutes }}"
+      - service: switch.turn_off
+        target:
+          entity_id: switch.boiler
