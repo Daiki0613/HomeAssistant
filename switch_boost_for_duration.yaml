@@ -1,0 +1,61 @@
+blueprint:
+  name: Switch boost for duration
+  description: >
+    Turns a chosen switch on, keeps it on for a configurable duration, then turns it off.
+    Useful for boiler boosts, towel warmers, pumps, etc.
+  domain: automation
+
+  input:
+    target_switch:
+      name: Switch to control
+      selector:
+        entity:
+          domain: switch
+
+    duration:
+      name: Duration
+      description: How long to keep the switch on
+      default:
+        hours: 2
+        minutes: 0
+        seconds: 0
+      selector:
+        duration: {}
+
+    behavior:
+      name: Button pressed again while running
+      description: >
+        Restart = reset timer from now. Ignore = do nothing if already running.
+      default: restart
+      selector:
+        select:
+          options:
+            - label: Restart timer
+              value: restart
+            - label: Ignore
+              value: single
+
+mode: !input behavior
+max_exceeded: silent
+
+trigger:
+  # Manual trigger from UI / Shortcut (via automation.trigger service)
+  # or you can add other triggers in the created automation if desired.
+  - platform: event
+    event_type: call_service
+    event_data:
+      domain: automation
+      service: trigger
+
+condition: []
+
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: !input target_switch
+
+  - delay: !input duration
+
+  - service: switch.turn_off
+    target:
+      entity_id: !input target_switch
