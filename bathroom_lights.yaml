@@ -1,0 +1,99 @@
+blueprint:
+  name: Bathroom light - motion + humidity
+  description: >
+    Turns on a bathroom light on motion. Turns off after a configurable delay once motion is off.
+    If humidity is above a configurable threshold, uses a longer (shower) delay.
+  domain: automation
+
+  input:
+    motion_sensor:
+      name: Motion sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class:
+            - motion
+            - occupancy
+
+    light_target:
+      name: Light(s) to control
+      selector:
+        target:
+          entity:
+            domain: light
+
+    humidity_sensor:
+      name: Humidity sensor
+      selector:
+        entity:
+          domain: sensor
+          device_class: humidity
+
+    humidity_threshold:
+      name: Humidity threshold (%)
+      description: If humidity is above this value, the shower delay is used.
+      default: 65
+      selector:
+        number:
+          min: 30
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+
+    normal_delay_minutes:
+      name: Normal off delay (minutes)
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 30
+          step: 1
+          unit_of_measurement: min
+
+    shower_delay_minutes:
+      name: Shower off delay (minutes)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          unit_of_measurement: min
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+
+variables:
+  motion_sensor: !input motion_sensor
+  humidity_sensor: !input humidity_sensor
+  humidity_threshold: !input humidity_threshold
+  normal_delay_minutes: !input normal_delay_minutes
+  shower_delay_minutes: !input shower_delay_minutes
+
+action:
+  - service: light.turn_on
+    target: !input light_target
+
+  # Wait until motion has been OFF for the required amount of time.
+  # The required time is dynamic: if humidity rises above the threshold, the wait extends automatically.
+  - wait_template: >
+      {% set humid = states(humidity_sensor) | float(0) %}
+      {% set mins = shower_delay_minutes if humid > (humidity_threshold | float(0))
+                   else normal_delay_minutes %}
+      {{
+        is_state(motion_sensor, 'off')
+        and (as_timestamp(now()) - as_timestamp(states[motion_sensor].last_changed)) >= (mins * 60)
+      }}
+
+  # Safety check: only turn off if motion is still off.
+  - condition: state
+    entity_id: !input motion_sensor
+    state: "off"
+
+  - service: light.turn_off
+    target: !input light_target
