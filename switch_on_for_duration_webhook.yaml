@@ -1,0 +1,77 @@
+blueprint:
+  name: Switch on for duration (webhook with minutes arg)
+  description: >
+    Exposes a webhook endpoint that turns a chosen switch on for N minutes (from query or JSON),
+    then turns it off. Minutes are clamped to a configurable maximum.
+  domain: automation
+
+  input:
+    webhook_id:
+      name: Webhook ID (secret)
+      description: >
+        This becomes part of the URL: /api/webhook/<webhook_id>.
+        Treat it like a password.
+      selector:
+        text:
+
+    target_switch:
+      name: Switch to control
+      selector:
+        entity:
+          domain: switch
+
+    default_minutes:
+      name: Default duration (minutes)
+      default: 120
+      selector:
+        number:
+          min: 1
+          max: 480
+          step: 1
+          unit_of_measurement: min
+
+    max_minutes:
+      name: Maximum allowed duration (minutes)
+      default: 240
+      selector:
+        number:
+          min: 1
+          max: 1440
+          step: 1
+          unit_of_measurement: min
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: webhook
+    webhook_id: !input webhook_id
+
+variables:
+  target_switch: !input target_switch
+  default_minutes: !input default_minutes
+  max_minutes: !input max_minutes
+
+  # Accept minutes via either:
+  #  - /api/webhook/<id>?minutes=120
+  #  - JSON body: {"minutes": 120}
+  minutes_requested: >
+    {% set q = (trigger.query.minutes if trigger.query is defined else none) %}
+    {% set j = (trigger.json.minutes if trigger.json is defined else none) %}
+    {% set raw = q if q is not none else (j if j is not none else default_minutes) %}
+    {{ raw | int(default_minutes) }}
+
+  # Clamp to [1, max_minutes]
+  minutes: "{{ [1, [minutes_requested, max_minutes] | min] | max }}"
+
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: "{{ target_switch }}"
+
+  - delay:
+      minutes: "{{ minutes }}"
+
+  - service: switch.turn_off
+    target:
+      entity_id: "{{ target_switch }}"
