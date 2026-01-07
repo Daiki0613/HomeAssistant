@@ -1,0 +1,33 @@
+script:
+  switch_on_for_duration:
+    alias: Switch on for duration
+    icon: mdi:timer
+    mode: restart
+    fields:
+      target_switch:
+        name: Switch
+        description: Which switch to turn on temporarily
+        required: true
+        selector:
+          entity:
+            domain: switch
+      duration_minutes:
+        name: Duration (minutes)
+        description: How long to keep it on
+        required: true
+        default: 120
+        selector:
+          number:
+            min: 1
+            max: 480
+            step: 1
+            unit_of_measurement: min
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: "{{ target_switch }}"
+      - delay:
+          minutes: "{{ duration_minutes | int(120) }}"
+      - service: switch.turn_off
+        target:
+          entity_id: "{{ target_switch }}"
