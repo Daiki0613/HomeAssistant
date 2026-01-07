@@ -1,0 +1,216 @@
+blueprint:
+  name: Philips Hue Dimmer Switch (Zigbee2MQTT)
+  description: >
+    Philips Hue Dimmer Switch over Zigbee2MQTT (actions: on_press, on_press_release,
+    off_press, off_press_release, up_press, up_press_release, down_press, down_press_release,
+    on_hold, on_hold_release).
+
+    - on_press   toggles the ON target (lights and/or switches)
+    - off_press  toggles the OFF target (lights and/or switches)
+    - up_press   brightens the brightness target (lights only)
+    - down_press dims the brightness target (lights only)
+
+    Optional:
+    - Hold-to-dim/brighten by continuing to press up/down until *_press_release.
+
+    ON/OFF targets can be entities, groups, devices or areas containing
+    lights and/or switches. Brightness target is lights only; if empty,
+    up/down buttons do nothing.
+  domain: automation
+
+  input:
+    remote_action:
+      name: Hue Dimmer action sensor
+      description: The Zigbee2MQTT action sensor (e.g. sensor.hue_dimmer_action)
+      selector:
+        entity:
+          domain: sensor
+
+    on_target:
+      name: Target for ON button
+      selector:
+        target:
+          entity:
+            domain:
+              - light
+              - switch
+
+    off_target:
+      name: Target for OFF button
+      selector:
+        target:
+          entity:
+            domain:
+              - light
+              - switch
+
+    brightness_target:
+      name: Brightness target (optional)
+      description: Light target whose brightness will be changed by up/down.
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: light
+
+    brightness_step:
+      name: Brightness step (%)
+      description: Up = +step, Down = -step
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+          unit_of_measurement: "%"
+
+    enable_hold_repeat:
+      name: Enable hold-to-dim/brighten
+      default: true
+      selector:
+        boolean: {}
+
+    hold_repeat_ms:
+      name: Hold repeat interval (ms)
+      description: How often to repeat brightness changes while holding.
+      default: 250
+      selector:
+        number:
+          min: 100
+          max: 2000
+          step: 50
+          unit_of_measurement: ms
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input remote_action
+
+variables:
+  remote_action: !input remote_action
+
+  # Zigbee2MQTT sometimes uses the state, sometimes an "action" attribute.
+  action: >-
+    {% if trigger.to_state is not none and 'action' in trigger.to_state.attributes %}
+      {{ trigger.to_state.attributes.action }}
+    {% else %}
+      {{ trigger.to_state.state }}
+    {% endif %}
+
+  brightness_step: !input brightness_step
+  brightness_target: !input brightness_target
+  has_brightness_target: "{{ brightness_target | length > 0 }}"
+
+  enable_hold_repeat: !input enable_hold_repeat
+  hold_repeat_ms: !input hold_repeat_ms
+
+action:
+  - choose:
+      # ─── ON press: toggle ON target ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'on_press' }}"
+        sequence:
+          - service: homeassistant.toggle
+            target: !input on_target
+
+      # ─── OFF press: toggle OFF target ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'off_press' }}"
+        sequence:
+          - service: homeassistant.toggle
+            target: !input off_target
+
+      # ─── UP press: brighten once ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'up_press' }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ has_brightness_target }}"
+            then:
+              - service: light.turn_on
+                target: !input brightness_target
+                data:
+                  brightness_step_pct: "{{ brightness_step | int }}"
+
+              # Optional hold-repeat until up_press_release
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_hold_repeat }}"
+                then:
+                  - repeat:
+                      sequence:
+                        - wait_for_trigger:
+                            - platform: state
+                              entity_id: !input remote_action
+                              to: "up_press_release"
+                          timeout:
+                            milliseconds: !input hold_repeat_ms
+                        - if:
+                            - condition: template
+                              value_template: "{{ wait.trigger is none }}"
+                          then:
+                            - service: light.turn_on
+                              target: !input brightness_target
+                              data:
+                                brightness_step_pct: "{{ brightness_step | int }}"
+                      until:
+                        - condition: template
+                          value_template: "{{ wait.trigger is not none }}"
+
+      # ─── DOWN press: dim once ───
+      - conditions:
+          - condition: template
+            value_template: "{{ action == 'down_press' }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ has_brightness_target }}"
+            then:
+              - service: light.turn_on
+                target: !input brightness_target
+                data:
+                  brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
+
+              # Optional hold-repeat until down_press_release
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_hold_repeat }}"
+                then:
+                  - repeat:
+                      sequence:
+                        - wait_for_trigger:
+                            - platform: state
+                              entity_id: !input remote_action
+                              to: "down_press_release"
+                          timeout:
+                            milliseconds: !input hold_repeat_ms
+                        - if:
+                            - condition: template
+                              value_template: "{{ wait.trigger is none }}"
+                          then:
+                            - service: light.turn_on
+                              target: !input brightness_target
+                              data:
+                                brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
+                      until:
+                        - condition: template
+                          value_template: "{{ wait.trigger is not none }}"
+
+      # ─── (Optional) ON HOLD actions ───
+      # You told me you also see on_hold / on_hold_release.
+      # Uncomment this block if you want ON hold to do something special.
+      #
+      # - conditions:
+      #     - condition: template
+      #       value_template: "{{ action == 'on_hold' }}"
+      #   sequence:
+      #     - service: light.toggle
+      #       target: !input brightness_target
+
+    default: []
