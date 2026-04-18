@@ -1,0 +1,316 @@
+type: grid
+columns: 4
+square: false
+cards:
+  - type: custom:button-card
+    name: Energize
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - background-color: "#f7ffff"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 0eeacfc5-2d81-4035-a23d-4a9bc02af965
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Read
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - background-color: "#ffd483"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 035b6ecf-414e-4781-abc7-3911556097cb
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Relax
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - background-color: "#f3b450"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: e71b2ef3-1b15-4c4b-b036-4b3d6efe58f8
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Rest
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - background-color: "#d7861e"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: e03267e7-9914-4f47-97fe-63c0bd317fe7
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Golden pond
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - background-color: "#fbb731"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 89c16361-391d-4346-b6d8-ac1eaf4de3dc
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Arctic aurora
+    icon: mdi:star-crescent
+    styles:
+      card:
+        - background-color: "#458ab8"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 940fd864-51e1-4761-95d3-75d4d68835ea
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Osaka
+    icon: mdi:party-popper
+    styles:
+      card:
+        - background-color: "#ed6a5c"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 5768805d-27c1-442e-b069-d20443485201
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Rosy sparkle
+    icon: mdi:party-popper
+    styles:
+      card:
+        - background-color: "#e8a0b0"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: cf50bd49-16b1-47fd-a020-b83072595f37
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Blood moon
+    icon: mdi:heart
+    styles:
+      card:
+        - background-color: "#7c64b3"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 8d0f34db-78fd-475d-9bed-a502b787964d
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Nebula
+    icon: mdi:star-crescent
+    styles:
+      card:
+        - background-color: "#8f64ce"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: 3c8662e5-e650-4f6a-a4b2-03b66d502f77
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Blossom
+    icon: mdi:flower
+    styles:
+      card:
+        - background-color: "#dfd7ad"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: d648408d-58ab-4768-b192-47ce06dc8e61
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
+  - type: custom:button-card
+    name: Nightlight
+    icon: mdi:weather-night
+    styles:
+      card:
+        - background-color: "#150900"
+        - border-radius: 12px
+        - padding: 16px 8px
+      name:
+        - color: white
+        - font-size: 13px
+        - font-weight: 500
+        - text-shadow: 0 1px 3px rgba(0,0,0,0.4)
+      icon:
+        - color: white
+        - width: 28px
+        - filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3))
+    tap_action:
+      action: call-service
+      service: scene_presets.apply_preset
+      service_data:
+        preset_id: b6f58e22-677f-4670-8677-3dea4ac60383
+        targets:
+          entity_id: light.living_room_lights
+        shuffle: true
+        smart_shuffle: true
