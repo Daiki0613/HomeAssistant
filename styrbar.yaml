@@ -8,10 +8,9 @@ blueprint:
     - "arrow_left_click"  dims the brightness target
     - "arrow_right_click" brightens the brightness target
 
-    Triggers on the raw Zigbee2MQTT payload rather than on an entity.
-    Zigbee2MQTT 2.0 removed the action sensor this blueprint used to take, and
-    the entity representation has now changed twice (action sensor, then device
-    triggers, then opt-in event entities) while the published payload has not.
+    Triggers on Zigbee2MQTT's MQTT device triggers, so it does not depend on the
+    action sensor that Zigbee2MQTT 2.0 removed, nor on the opt-in event
+    entities.
 
     ON/OFF targets can be entities, groups, devices or areas containing
     lights and/or switches. Brightness target is lights only; if empty,
@@ -20,15 +19,12 @@ blueprint:
   source_url: https://raw.githubusercontent.com/Daiki0613/HomeAssistant/main/styrbar.yaml
 
   input:
-    remote_topic:
-      name: STYRBAR MQTT topic
-      description: >
-        The remote's Zigbee2MQTT topic: the base topic plus the device's
-        friendly name, e.g. zigbee2mqtt/Styrbar. It must match the friendly
-        name in the Zigbee2MQTT frontend exactly, capitalisation included.
-      default: zigbee2mqtt/Styrbar
+    remote:
+      name: STYRBAR remote
+      description: The Zigbee2MQTT device for the remote.
       selector:
-        text:
+        device:
+          integration: mqtt
 
     on_target:
       name: Target for ON button
@@ -82,30 +78,33 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Every state update lands on this topic, so the templates default to an
-  # empty string for the messages that carry no action at all.
-  - platform: mqtt
-    topic: !input remote_topic
-    value_template: "{{ value_json.action | default('') }}"
-    payload: "on"
+  # subtype is the Zigbee2MQTT action name verbatim
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: "on"
     id: press_on
 
-  - platform: mqtt
-    topic: !input remote_topic
-    value_template: "{{ value_json.action | default('') }}"
-    payload: "off"
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: "off"
     id: press_off
 
-  - platform: mqtt
-    topic: !input remote_topic
-    value_template: "{{ value_json.action | default('') }}"
-    payload: "arrow_left_click"
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_left_click
     id: arrow_left
 
-  - platform: mqtt
-    topic: !input remote_topic
-    value_template: "{{ value_json.action | default('') }}"
-    payload: "arrow_right_click"
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_right_click
     id: arrow_right
 
 variables:
