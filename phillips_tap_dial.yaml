@@ -6,18 +6,19 @@ blueprint:
     The dial adjusts the brightness of the most recently toggled light
     (tracked with an optional input_text helper).
 
+    Triggers on Zigbee2MQTT's MQTT device triggers, so it does not depend on the
+    action sensor that Zigbee2MQTT 2.0 removed, nor on the opt-in event
+    entities.
+
   domain: automation
 
   input:
-    button_sensor:
-      name: Tap Dial action sensor
-      description: >
-        Sensor entity for the Tap Dial from Zigbee2MQTT
-        (typically something like sensor.<name>_action).
+    remote:
+      name: Tap Dial
+      description: The Zigbee2MQTT device for the Tap Dial.
       selector:
-        entity:
-          domain:
-            - sensor
+        device:
+          integration: mqtt
 
     first_light:
       name: First light (button 1)
@@ -116,43 +117,76 @@ variables:
     forth_light: !input forth_light
 
 trigger:
+  # subtype is the Zigbee2MQTT action name verbatim, and each id repeats it so
+  # the branches below can compare against it directly
+
   # Button presses
-  - platform: state
-    entity_id: !input button_sensor
-    to: button_1_press
-  - platform: state
-    entity_id: !input button_sensor
-    to: button_2_press
-  - platform: state
-    entity_id: !input button_sensor
-    to: button_3_press
-  - platform: state
-    entity_id: !input button_sensor
-    to: button_4_press
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: button_1_press
+    id: button_1_press
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: button_2_press
+    id: button_2_press
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: button_3_press
+    id: button_3_press
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: button_4_press
+    id: button_4_press
 
   # Dial rotations
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_left_step
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_left_slow
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_left_fast
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_right_step
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_right_slow
-  - platform: state
-    entity_id: !input button_sensor
-    to: dial_rotate_right_fast
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_left_step
+    id: dial_rotate_left_step
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_left_slow
+    id: dial_rotate_left_slow
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_left_fast
+    id: dial_rotate_left_fast
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_right_step
+    id: dial_rotate_right_step
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_right_slow
+    id: dial_rotate_right_slow
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: dial_rotate_right_fast
+    id: dial_rotate_right_fast
 
 action:
   - variables:
-      action: "{{ trigger.to_state.state }}"
+      action: "{{ trigger.id }}"
 
   - choose:
       # ── Button 1 toggles first_light ──

@@ -13,18 +13,22 @@ blueprint:
     Optional:
     - Hold-to-dim/brighten by continuing to press up/down until *_press_release.
 
+    Triggers on Zigbee2MQTT's MQTT device triggers, so it does not depend on the
+    action sensor that Zigbee2MQTT 2.0 removed, nor on the opt-in event
+    entities.
+
     ON/OFF targets can be entities, groups, devices or areas containing
     lights and/or switches. Brightness target is lights only; if empty,
     up/down buttons do nothing.
   domain: automation
 
   input:
-    remote_action:
-      name: Hue Dimmer action sensor
-      description: The Zigbee2MQTT action sensor (e.g. sensor.hue_dimmer_action)
+    remote:
+      name: Hue Dimmer Switch
+      description: The Zigbee2MQTT device for the dimmer switch.
       selector:
-        entity:
-          domain: sensor
+        device:
+          integration: mqtt
 
     on_target:
       name: Target for ON button
@@ -85,19 +89,38 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  - platform: state
-    entity_id: !input remote_action
+  # subtype is the Zigbee2MQTT action name verbatim, and each id repeats it so
+  # the branches below can compare against it directly
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: on_press
+    id: on_press
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: off_press
+    id: off_press
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: up_press
+    id: up_press
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: down_press
+    id: down_press
 
 variables:
-  remote_action: !input remote_action
-
-  # Zigbee2MQTT sometimes uses the state, sometimes an "action" attribute.
-  action: >-
-    {% if trigger.to_state is not none and 'action' in trigger.to_state.attributes %}
-      {{ trigger.to_state.attributes.action }}
-    {% else %}
-      {{ trigger.to_state.state }}
-    {% endif %}
+  action: "{{ trigger.id }}"
 
   brightness_step: !input brightness_step
   brightness_target: !input brightness_target
@@ -146,9 +169,11 @@ action:
                   - repeat:
                       sequence:
                         - wait_for_trigger:
-                            - platform: state
-                              entity_id: !input remote_action
-                              to: "up_press_release"
+                            - platform: device
+                              domain: mqtt
+                              device_id: !input remote
+                              type: action
+                              subtype: up_press_release
                           timeout:
                             milliseconds: !input hold_repeat_ms
                         - if:
@@ -185,9 +210,11 @@ action:
                   - repeat:
                       sequence:
                         - wait_for_trigger:
-                            - platform: state
-                              entity_id: !input remote_action
-                              to: "down_press_release"
+                            - platform: device
+                              domain: mqtt
+                              device_id: !input remote
+                              type: action
+                              subtype: down_press_release
                           timeout:
                             milliseconds: !input hold_repeat_ms
                         - if:
@@ -203,8 +230,8 @@ action:
                           value_template: "{{ wait.trigger is not none }}"
 
       # ─── (Optional) ON HOLD actions ───
-      # You told me you also see on_hold / on_hold_release.
-      # Uncomment this block if you want ON hold to do something special.
+      # Add a device trigger with subtype on_hold and id on_hold above, then
+      # uncomment this block, if you want ON hold to do something special.
       #
       # - conditions:
       #     - condition: template
