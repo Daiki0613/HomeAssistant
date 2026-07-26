@@ -129,6 +129,10 @@ variables:
   enable_hold_repeat: !input enable_hold_repeat
   hold_repeat_ms: !input hold_repeat_ms
 
+  # Bound the hold loop at roughly ten seconds, so a release event that never
+  # arrives cannot dim or brighten indefinitely
+  hold_max_steps: "{{ (10000 / (hold_repeat_ms | int)) | round(0, 'ceil') | int }}"
+
 action:
   - choose:
       # ─── ON press: toggle ON target ───
@@ -161,7 +165,9 @@ action:
                 data:
                   brightness_step_pct: "{{ brightness_step | int }}"
 
-              # Optional hold-repeat until up_press_release
+              # Optional hold-repeat until the button is released. Both release
+              # actions count: a quick tap ends with up_press_release, but
+              # holding the button ends with up_hold_release instead.
               - if:
                   - condition: template
                     value_template: "{{ enable_hold_repeat }}"
@@ -174,6 +180,11 @@ action:
                               device_id: !input remote
                               type: action
                               subtype: up_press_release
+                            - platform: device
+                              domain: mqtt
+                              device_id: !input remote
+                              type: action
+                              subtype: up_hold_release
                           timeout:
                             milliseconds: !input hold_repeat_ms
                         - if:
@@ -186,7 +197,9 @@ action:
                                 brightness_step_pct: "{{ brightness_step | int }}"
                       until:
                         - condition: template
-                          value_template: "{{ wait.trigger is not none }}"
+                          value_template: >-
+                            {{ wait.trigger is not none
+                               or repeat.index >= hold_max_steps }}
 
       # ─── DOWN press: dim once ───
       - conditions:
@@ -202,7 +215,9 @@ action:
                 data:
                   brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
 
-              # Optional hold-repeat until down_press_release
+              # Optional hold-repeat until the button is released. Both release
+              # actions count: a quick tap ends with down_press_release, but
+              # holding the button ends with down_hold_release instead.
               - if:
                   - condition: template
                     value_template: "{{ enable_hold_repeat }}"
@@ -215,6 +230,11 @@ action:
                               device_id: !input remote
                               type: action
                               subtype: down_press_release
+                            - platform: device
+                              domain: mqtt
+                              device_id: !input remote
+                              type: action
+                              subtype: down_hold_release
                           timeout:
                             milliseconds: !input hold_repeat_ms
                         - if:
@@ -227,7 +247,9 @@ action:
                                 brightness_step_pct: "{{ (brightness_step | int) * -1 }}"
                       until:
                         - condition: template
-                          value_template: "{{ wait.trigger is not none }}"
+                          value_template: >-
+                            {{ wait.trigger is not none
+                               or repeat.index >= hold_max_steps }}
 
       # ─── (Optional) ON HOLD actions ───
       # Add a device trigger with subtype on_hold and id on_hold above, then
