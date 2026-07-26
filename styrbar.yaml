@@ -8,6 +8,11 @@ blueprint:
     - "arrow_left_click"  dims the brightness target
     - "arrow_right_click" brightens the brightness target
 
+    Triggers on the raw Zigbee2MQTT payload rather than on an entity.
+    Zigbee2MQTT 2.0 removed the action sensor this blueprint used to take, and
+    the entity representation has now changed twice (action sensor, then device
+    triggers, then opt-in event entities) while the published payload has not.
+
     ON/OFF targets can be entities, groups, devices or areas containing
     lights and/or switches. Brightness target is lights only; if empty,
     the arrow buttons do nothing.
@@ -15,12 +20,15 @@ blueprint:
   source_url: https://raw.githubusercontent.com/Daiki0613/HomeAssistant/main/styrbar.yaml
 
   input:
-    remote_action:
-      name: STYRBAR action sensor
-      description: The Zigbee2MQTT action sensor (e.g. sensor.styrbar_action)
+    remote_topic:
+      name: STYRBAR MQTT topic
+      description: >
+        The remote's Zigbee2MQTT topic: the base topic plus the device's
+        friendly name, e.g. zigbee2mqtt/Styrbar. It must match the friendly
+        name in the Zigbee2MQTT frontend exactly, capitalisation included.
+      default: zigbee2mqtt/Styrbar
       selector:
-        entity:
-          domain: sensor
+        text:
 
     on_target:
       name: Target for ON button
@@ -74,17 +82,33 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  - platform: state
-    entity_id: !input remote_action
+  # Every state update lands on this topic, so the templates default to an
+  # empty string for the messages that carry no action at all.
+  - platform: mqtt
+    topic: !input remote_topic
+    value_template: "{{ value_json.action | default('') }}"
+    payload: "on"
+    id: press_on
+
+  - platform: mqtt
+    topic: !input remote_topic
+    value_template: "{{ value_json.action | default('') }}"
+    payload: "off"
+    id: press_off
+
+  - platform: mqtt
+    topic: !input remote_topic
+    value_template: "{{ value_json.action | default('') }}"
+    payload: "arrow_left_click"
+    id: arrow_left
+
+  - platform: mqtt
+    topic: !input remote_topic
+    value_template: "{{ value_json.action | default('') }}"
+    payload: "arrow_right_click"
+    id: arrow_right
 
 variables:
-  # Zigbee2MQTT sometimes uses the state, sometimes an "action" attribute.
-  action: >-
-    {% if 'action' in trigger.to_state.attributes %}
-      {{ trigger.to_state.attributes.action }}
-    {% else %}
-      {{ trigger.to_state.state }}
-    {% endif %}
   brightness_step: !input brightness_step
   brightness_target: !input brightness_target
   has_brightness_target: "{{ brightness_target | length > 0 }}"
@@ -93,24 +117,24 @@ action:
   - choose:
       # ─── ON button: toggle ON target ───
       - conditions:
-          - condition: template
-            value_template: "{{ action == 'on' }}"
+          - condition: trigger
+            id: press_on
         sequence:
           - service: homeassistant.toggle
             target: !input on_target
 
       # ─── OFF button: toggle OFF target ───
       - conditions:
-          - condition: template
-            value_template: "{{ action == 'off' }}"
+          - condition: trigger
+            id: press_off
         sequence:
           - service: homeassistant.toggle
             target: !input off_target
 
       # ─── LEFT arrow: dim brightness target ───
       - conditions:
-          - condition: template
-            value_template: "{{ action == 'arrow_left_click' }}"
+          - condition: trigger
+            id: arrow_left
         sequence:
           - if:
               - condition: template
@@ -123,8 +147,8 @@ action:
 
       # ─── RIGHT arrow: brighten brightness target ───
       - conditions:
-          - condition: template
-            value_template: "{{ action == 'arrow_right_click' }}"
+          - condition: trigger
+            id: arrow_right
         sequence:
           - if:
               - condition: template
